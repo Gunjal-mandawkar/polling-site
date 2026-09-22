@@ -1,0 +1,59 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../models/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model user {
+  userid       Int    @id @default(autoincrement())
+  email        String @unique
+  username     String @unique
+  passwordHash String
+  polles       poll[]
+  votes        vote[]
+}
+
+model poll {
+  pollid      Int      @id @default(autoincrement())
+  userid      Int
+  user        user     @relation(fields: [userid], references: [userid], onDelete: Cascade)
+  title       String
+  options     option[]
+  startTime   DateTime
+  endTime     DateTime
+  lastVoteAt  DateTime @default(now())
+  finalized   Boolean  @default(false)
+  type        String
+  code        String?
+  multiselect Boolean  @default(false)
+  showResult  Boolean  @default(true)
+}
+
+model option {
+  optionid       Int    @id @default(autoincrement())
+  pollid         Int
+  poll           poll   @relation(fields: [pollid], references: [pollid], onDelete: Cascade)
+  desc           String
+  votes          vote[]
+  finalVoteCount Int?
+}
+
+model vote {
+  voteid   Int    @id @default(autoincrement())
+  optionid Int
+  option   option @relation(fields: [optionid], references: [optionid], onDelete: Cascade)
+  userid   Int
+  user     user   @relation(fields: [userid], references: [userid], onDelete: Cascade)
+
+  @@unique([userid, optionid], name: "composite_key")
+}

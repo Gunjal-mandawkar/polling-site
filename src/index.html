@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>polls.</title>
+<style>
+  :root{
+    --ink:#1c1b19;
+    --paper:#f6f4ef;
+    --line:#dcd8cf;
+    --accent:#4a4e9e;
+    --accent-soft:#e9e9f7;
+    --error:#a13a2f;
+    --mono: 'JetBrains Mono', 'Courier New', monospace;
+    --sans: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--paper); color:var(--ink); font-family:var(--sans); line-height:1.5;}
+
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 24px; border-bottom:1px solid var(--line);
+  }
+  header .brand{font-family:var(--mono); font-weight:bold; letter-spacing:0.05em;}
+  header .brand span{color:var(--accent);}
+  nav{display:none; gap:16px; font-family:var(--mono); font-size:13px;}
+  nav.active{display:flex;}
+  nav button{background:none; border:none; cursor:pointer; color:var(--ink); font-family:var(--mono); font-size:13px;}
+  nav button:hover{color:var(--accent);}
+
+  main{max-width:640px; margin:0 auto; padding:32px 20px 80px;}
+  .view{display:none;}
+  .view.active{display:block;}
+
+  h1{font-size:24px; margin:0 0 4px;}
+  .sub{font-family:var(--mono); font-size:11px; color:#77736a; text-transform:uppercase; letter-spacing:0.06em; margin:0 0 24px;}
+
+  form{display:flex; flex-direction:column; gap:12px; max-width:400px;}
+  label{font-family:var(--mono); font-size:11px; text-transform:uppercase; color:#77736a; margin-bottom:-6px;}
+  input, textarea, select{
+    font-family:var(--sans); font-size:15px; padding:9px 12px;
+    border:1px solid var(--line); border-radius:3px; background:#fff; color:var(--ink);
+  }
+  textarea{resize:vertical; min-height:70px;}
+
+  button{
+    font-family:var(--mono); font-size:13px; text-transform:uppercase; letter-spacing:0.04em;
+    padding:10px 16px; background:var(--ink); color:var(--paper); border:none; border-radius:3px; cursor:pointer; width:fit-content;
+  }
+  button.secondary{background:none; color:var(--ink); border:1px solid var(--line);}
+  button.danger{background:none; color:var(--error); border:1px solid var(--error);}
+  button:hover{opacity:0.85;}
+
+  .switch{margin-top:14px; font-size:14px; color:#77736a;}
+  .switch a{color:var(--accent); cursor:pointer; text-decoration:underline;}
+
+  .msg{font-family:var(--mono); font-size:12px; padding:7px 10px; border-radius:3px; display:none;}
+  .msg.error{display:block; background:#f6e6e3; color:var(--error);}
+
+  .toolbar{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; gap:12px;}
+  .search-row{display:flex; gap:8px; max-width:400px; margin-bottom:24px;}
+  .search-row input{flex:1;}
+
+  .poll-card{
+    background:#fff; border:1px solid var(--line); border-radius:4px;
+    padding:14px 16px; margin-bottom:8px; cursor:pointer; font-weight:600;
+  }
+  .poll-card:hover{background:var(--accent-soft);}
+  .empty-state{font-family:var(--mono); font-size:13px; color:#77736a;}
+
+  .section-label{font-family:var(--mono); font-size:12px; text-transform:uppercase; color:#77736a; margin:24px 0 8px;}
+
+  .option-row{display:flex; gap:8px; margin-bottom:8px;}
+  .option-row input{flex:1;}
+
+  .option-btn{
+    display:block; width:100%; text-align:left; background:#fff; color:var(--ink);
+    border:1px solid var(--line); padding:14px 16px; margin-bottom:8px; border-radius:4px; cursor:pointer;
+  }
+  .option-btn:hover{background:var(--accent-soft); border-color:var(--accent);}
+  .option-btn.selected{background:var(--accent); color:#fff; border-color:var(--accent);}
+
+  .analytics-row{
+    display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--line);
+    font-family:var(--mono); font-size:14px;
+  }
+
+  .toggle-row{display:flex; align-items:center; gap:8px; font-size:14px;}
+  .back{
+    font-family:var(--mono); font-size:12px; background:none; border:none; color:#77736a;
+    padding:0; margin-bottom:16px; cursor:pointer; text-decoration:underline;
+  }
+
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--ink); color:var(--paper); padding:10px 18px; border-radius:4px;
+    font-family:var(--mono); font-size:13px; opacity:0; pointer-events:none;
+    transition:opacity 0.2s ease, transform 0.2s ease; z-index:100;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">poll<span>.</span></div>
+  <nav id="mainNav">
+    <button data-nav="homeView">Home</button>
+    <button data-nav="dashboardView">Dashboard</button>
+    <button data-nav="createPollView">New Poll</button>
+    <button data-nav="pastPollsView">Past Polls</button>
+    <button id="logoutBtn">Log out</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- REGISTER -->
+  <section id="registerView" class="view active">
+    <h1>Create an account</h1>
+    <p class="sub">You'll be signed in right after</p>
+    <form id="registerForm">
+      <label for="regUsername">Username</label>
+      <input type="text" id="regUsername" required minlength="3">
+      <label for="regEmail">Email</label>
+      <input type="email" id="regEmail" required>
+      <label for="regPassword">Password</label>
+      <input type="password" id="regPassword" required minlength="8">
+      <div id="registerMsg" class="msg"></div>
+      <button type="submit">Register</button>
+    </form>
+    <p class="switch">Already have an account? <a data-nav="loginView">Log in</a></p>
+  </section>
+
+  <!-- LOGIN -->
+  <section id="loginView" class="view">
+    <h1>Welcome back</h1>
+    <form id="loginForm">
+      <label for="loginUsername">Username</label>
+      <input type="text" id="loginUsername" required>
+      <label for="loginPassword">Password</label>
+      <input type="password" id="loginPassword" required>
+      <div id="loginMsg" class="msg"></div>
+      <button type="submit">Log in</button>
+    </form>
+    <p class="switch">No account yet? <a data-nav="registerView">Register</a></p>
+  </section>
+
+  <!-- HOME: search + default polls -->
+  <section id="homeView" class="view">
+    <div class="toolbar">
+      <div>
+        <h1 style="margin-bottom:0;">Public polls</h1>
+        <p class="sub" style="margin-bottom:0;">Search by title, or browse what's active</p>
+      </div>
+      <button id="homeCreatePollBtn" class="secondary">+ Create poll</button>
+    </div>
+    <div class="search-row">
+      <input type="text" id="searchInput" placeholder="Search polls...">
+      <button id="searchBtn">Search</button>
+    </div>
+    <div id="pollResults"></div>
+  </section>
+
+  <!-- JOIN CODE (private poll) -->
+  <section id="joinCodeView" class="view">
+    <button class="back" data-nav="homeView">&larr; back</button>
+    <h1>Enter poll code</h1>
+    <form id="joinCodeForm">
+      <label for="joinCodeInput">Code</label>
+      <input type="text" id="joinCodeInput" required>
+      <div id="joinCodeMsg" class="msg"></div>
+      <button type="submit">Join</button>
+    </form>
+  </section>
+
+  <!-- DASHBOARD -->
+  <section id="dashboardView" class="view">
+    <h1>Your dashboard</h1>
+    <p class="section-label">Polls you've hosted</p>
+    <div id="hostedPolls"></div>
+    <p class="section-label">Polls you've voted in</p>
+    <div id="votesCast"></div>
+  </section>
+
+  <!-- CREATE POLL -->
+  <section id="createPollView" class="view">
+    <h1>Create a poll</h1>
+    <form id="createPollForm">
+      <label for="pollTitleInput">Title</label>
+      <input type="text" id="pollTitleInput" required>
+
+      <label>Options (2–10)</label>
+      <div id="optionsContainer">
+        <div class="option-row"><input type="text" class="optionInput" required></div>
+        <div class="option-row"><input type="text" class="optionInput" required></div>
+      </div>
+      <button type="button" id="addOptionBtn" class="secondary">+ Add option</button>
+
+      <label for="pollType">Visibility</label>
+      <select id="pollType">
+        <option value="public">Public</option>
+        <option value="private">Private</option>
+      </select>
+
+      <div id="codeField" style="display:none;">
+        <label for="pollCode">Set a join code</label>
+        <input type="text" id="pollCode">
+      </div>
+
+      <div class="toggle-row">
+        <input type="checkbox" id="multiselectToggle">
+        <label for="multiselectToggle" style="margin:0;">Allow multiple answers per voter</label>
+      </div>
+      <div class="toggle-row">
+        <input type="checkbox" id="showResultToggle" checked>
+        <label for="showResultToggle" style="margin:0;">Show results after poll ends</label>
+      </div>
+
+      <label for="startTimeInput">Start time</label>
+      <input type="datetime-local" id="startTimeInput" required>
+      <label for="endTimeInput">End time</label>
+      <input type="datetime-local" id="endTimeInput" required>
+
+      <div id="createPollMsg" class="msg"></div>
+      <button type="submit">Create poll</button>
+    </form>
+  </section>
+
+  <!-- POLL (voting) -->
+  <section id="pollView" class="view">
+    <button class="back" data-nav="homeView">&larr; back</button>
+    <h1 id="pollTitle"></h1>
+    <p class="sub">Tap an option to vote</p>
+    <div id="pollOptions"></div>
+  </section>
+
+  <!-- PAST POLLS -->
+  <section id="pastPollsView" class="view">
+    <h1>Past polls</h1>
+    <div id="pastPollsList"></div>
+  </section>
+
+  <!-- ANALYTICS -->
+  <section id="analyticsView" class="view">
+    <button class="back" data-nav="pastPollsView">&larr; back to past polls</button>
+    <h1 id="analyticsTitle"></h1>
+    <p class="sub" id="analyticsTotal"></p>
+    <div id="analyticsBreakdown"></div>
+  </section>
+
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script src="script.js" defer></script>
+<script defer>
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[data-nav]').forEach(el => {
+      el.addEventListener('click', () => showView(el.dataset.nav));
+    });
+
+    // --- Auth forms ---
+    document.getElementById('registerForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      Register(
+        document.getElementById('regUsername').value,
+        document.getElementById('regPassword').value,
+        document.getElementById('regEmail').value
+      );
+    });
+
+    document.getElementById('loginForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      Login(
+        document.getElementById('loginUsername').value,
+        document.getElementById('loginPassword').value
+      );
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', Logout);
+    document.getElementById('homeCreatePollBtn').addEventListener('click', () => showView('createPollView'));
+
+    // --- Nav shows only once logged in (showView from Register/Login flips this) ---
+    const originalShowView = showView;
+    showView = function(id) {
+      originalShowView(id);
+      const nav = document.getElementById('mainNav');
+      if (id !== 'registerView' && id !== 'loginView') {
+        nav.classList.add('active');
+      } else {
+        nav.classList.remove('active');
+      }
+      if (id === 'dashboardView') dashboard();
+      if (id === 'pastPollsView') pastpoll();
+      if (id === 'createPollView') document.getElementById('createPollForm').reset();
+    };
+
+    // --- Home search ---
+    document.getElementById('searchBtn').addEventListener('click', () => {
+      const term = document.getElementById('searchInput').value;
+      if (term.trim() === '') {
+        defaultpolls();
+      } else {
+        searchpoll(term);
+      }
+    });
+
+    // --- Join code form (private polls) ---
+    document.getElementById('joinCodeForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const code = document.getElementById('joinCodeInput').value;
+      joinpoll(window.currentPollId, code);
+    });
+
+    // --- Create poll form ---
+    document.getElementById('pollType').addEventListener('change', (e) => {
+      document.getElementById('codeField').style.display = e.target.value === 'private' ? 'block' : 'none';
+    });
+
+    document.getElementById('addOptionBtn').addEventListener('click', () => {
+      const container = document.getElementById('optionsContainer');
+      if (container.children.length >= 10) return;
+      const row = document.createElement('div');
+      row.className = 'option-row';
+      row.innerHTML = '<input type="text" class="optionInput" required>';
+      container.appendChild(row);
+    });
+
+    document.getElementById('createPollForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const options = Array.from(document.querySelectorAll('.optionInput'))
+        .map(input => input.value)
+        .filter(v => v.trim() !== '');
+
+      const type = document.getElementById('pollType').value;
+      const code = type === 'private' ? document.getElementById('pollCode').value : null;
+
+      postpoll(
+        document.getElementById('pollTitleInput').value,
+        options,
+        type,
+        code,
+        document.getElementById('multiselectToggle').checked,
+        document.getElementById('showResultToggle').checked,
+        new Date(document.getElementById('startTimeInput').value).toISOString(),
+        new Date(document.getElementById('endTimeInput').value).toISOString()
+      );
+    });
+
+    // Runs last, inside this same listener, so it uses the final
+    // (nav-bar-toggling) version of showView defined just above,
+    // not the original one from script.js.
+    checkSession();
+  });
+
+  async function checkSession() {
+    try {
+      const response = await fetch('/api/user/dashboard', { credentials: 'include' });
+      if (response.ok) {
+        const data = await response.json();
+        showView('homeView');
+        loadHome();
+      }
+      // if not ok, do nothing — the default active view (register) stays showing
+    } catch (error) {
+      console.error("Session check failed:", error);
+    }
+  }
+
+  function showToast(message) {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 1800);
+  }
+</script>
+
+</body>
+</html>
